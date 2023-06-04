@@ -6,7 +6,7 @@ MODE = "both"  # video, audio, both
 AUDIO_FORMAT = None   # None for best
 VIDEO_FORMAT = None  # None for best
 RESULT_FORMAT = "mp4"
-CODEC = "libx264"
+CODEC = "h264_nvenc"    # best for nvidia gpu
 
 CACHE = "./cache"
 CREATE_FOLDER_FOR_PLAYLIST = True
