@@ -1,6 +1,7 @@
-PATH = r"F:\Videos"
+PATH = r"./downloads"
+URLS_PATH = "./urls.txt"
 HIGHEST_RESOLUTION = "1080"
-AUDIO_BITRATE = "128"
+AUDIO_BITRATE = "192"
 MODE = "both"  # video, audio, both
 
 AUDIO_FORMAT = None   # None for best
@@ -23,5 +24,5 @@ BASIC_OPTIONS = {
     'quiet': True,
     "no_warnings": True,
     "verbose": False,
-    "cookiefile": "cookies.txt",
+    # "cookiefile": "cookies.txt",
 }

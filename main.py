@@ -296,7 +296,7 @@ class DownloadManager:
 
 
 if __name__ == "__main__":
-    downloader = DownloadManager("urls.txt", auto_run=False)
+    downloader = DownloadManager(URLS_FILE, auto_run=False)
     try:
         downloader.run()
     except KeyboardInterrupt:

@@ -1,5 +1,6 @@
-/.idea/
+/.idea/*
 /cache/
 /cookies.txt
+/urls.txt
 /YoutubeDL4.0.iml
 *.mp3
