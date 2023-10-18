@@ -28,6 +28,10 @@ except ImportError:
     logging.error("settings.py not found! Please create it in the same directory as main.py.")
     sys.exit()
 
+if DOWNLOAD_ON_THREADS:
+    import threading
+    import time
+
 
 class VideoDownloader:
     def __init__(self,
@@ -48,12 +52,20 @@ class VideoDownloader:
                  preset=PRESET,
                  basic_options=BASIC_OPTIONS,
                  threads=THREADS,
-                 start_of_title=""
+                 start_of_title="",
+                 download_on_threads = DOWNLOAD_ON_THREADS,
+                 download_thread_timeout = TIMEOUT_FOR_THREADS
                 ):
         self.id = random.randint(0, 1000000)
         self.path = path
         self.start_of_title = start_of_title
         self.mode = mode
+
+        self.download_on_threads = download_on_threads
+        self.download_thread_timeout = download_thread_timeout
+        self.downloading_video = False
+        self.downloading_audio = False
+
         self.started_merging = False
 
         self.highest_resolution = highest_resolution
@@ -117,11 +129,30 @@ class VideoDownloader:
 
     def download(self):
         logging.info("          -> Downloading video...")
-        self.download_video()
+        if self.download_on_threads:
+            self.video_download_thread = threading.Thread(target=self.download_video)
+            self.video_download_thread.start()
+            logging.info("                  > Started the thread for video download...")
+        else:
+            self.download_video()
         logging.info("          -> Downloading audio...")
-        self.download_audio()
+        if self.download_on_threads:
+            self.audio_download_thread = threading.Thread(target=self.download_audio)
+            self.audio_download_thread.start()
+            logging.info("                  > Started the thread for audio download...")
+        else:
+            self.download_audio()
+        
+        if self.download_on_threads:
+            if not self.wait_until(lambda: not self.downloading_video and not self.downloading_audio, self.download_thread_timeout):
+                logging.error(f"Thread to download timed out: Video finished: {not self.downloading_video}; Audio finished: {not self.downloading_audio}")
+                logging.warning("If this error keeps occouring try to change the DOWNLOAD_THREAD_TIMEOUT variable")
+                raise
+            else:
+                logging.info("              ✓ Both threads finished succesfully")
 
     def download_video(self, path=None):
+        self.downloading_video = True
         options = self.basic_options.copy()
         options["format"] = f"bestvideo[height<=?{self.highest_resolution}]"
         if self.video_format is not None:
@@ -133,9 +164,11 @@ class VideoDownloader:
         with YoutubeDL(options) as ydl:
             ydl._ies = {"Youtube": ydl.get_info_extractor('Youtube')}
             ydl.download([self.url])
+            self.downloading_video = False
             logging.info("              ✓ Video download complete!")
 
     def download_audio(self, path=None):
+        self.downloading_audio = True
         options = BASIC_OPTIONS
         options["format"] = f"bestaudio[abr<=?{self.audio_bitrate}]"
         if self.video_format is not None:
@@ -148,6 +181,7 @@ class VideoDownloader:
         with YoutubeDL(options) as ydl:
             ydl._ies = {"Youtube": ydl.get_info_extractor('Youtube')}
             ydl.download([self.url])
+            self.downloading_audio = False
             logging.info("              ✓ Audio download complete!")
 
     def format_title(self, title):
@@ -173,6 +207,14 @@ class VideoDownloader:
         os.remove(os.path.join(self.cache, self.get_file(f".video{self.id}.")))
         os.remove(os.path.join(self.cache, self.get_file(f".audio{self.id}.")))
         logging.info("          ✓ Temporary files removed!")
+
+    def wait_until(self, somepredicate, timeout, period=0.25, *args, **kwargs):
+        mustend = time.time() + timeout
+        while time.time() < mustend:
+            if somepredicate(*args, **kwargs): 
+                return True
+            time.sleep(period)
+        return False
 
 
 class PlaylistDownloader:
