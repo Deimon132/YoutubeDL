@@ -149,7 +149,7 @@ class VideoDownloader:
                 logging.warning("If this error keeps occouring try to change the DOWNLOAD_THREAD_TIMEOUT variable")
                 raise
             else:
-                logging.info("              ✓ Both threads finished succesfully")
+                logging.info("                  ✓ Both threads finished succesfully")
 
     def download_video(self, path=None):
         self.downloading_video = True
@@ -177,7 +177,7 @@ class VideoDownloader:
                 'preferredcodec': self.audio_format,
                 'preferredquality': self.audio_bitrate,
             }]
-        options["outtmpl"] = f"{CACHE if path is None else path}/{self.format_title(self.video_info['title'])}{f'.audio{self.id}' if path is None else ''}.%(ext)s"
+        options["outtmpl"] = f"{CACHE if path is None else path}/{self.self.start_of_title + self.format_title(self.video_info['title'])}{f'.audio{self.id}' if path is None else ''}.%(ext)s"
         with YoutubeDL(options) as ydl:
             ydl._ies = {"Youtube": ydl.get_info_extractor('Youtube')}
             ydl.download([self.url])
@@ -198,8 +198,9 @@ class VideoDownloader:
         self._video_file = VideoFileClip(os.path.join(self.cache, self.get_file(f".video{self.id}.")))
         self._video_file.audio = AudioFileClip(os.path.join(self.cache, self.get_file(f".audio{self.id}.")))
         path = os.path.join(self.path, re.sub(r"[\\/:*?\"<>|]", "", self.start_of_title + self.video_info['title']) + "." + self.result_format)
+        temp_path = os.path.join(self.cache, re.sub(r"[\\/:*?\"<>|]", "", self.start_of_title + self.video_info['title']) + "." + (self.audio_format if self.audio_format else "mp3"))
         self.started_merging = True
-        self._video_file.write_videofile(path, codec=self.codec, logger=None, preset=self.preset, threads=self.threads)
+        self._video_file.write_videofile(path, codec=self.codec, logger=None, preset=self.preset, threads=self.threads, temp_audiofile=temp_path)
         logging.info("              ✓ Merge complete!")
         self._video_file.close()
         self._video_file = None
