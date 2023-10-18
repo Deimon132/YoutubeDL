@@ -177,7 +177,7 @@ class VideoDownloader:
                 'preferredcodec': self.audio_format,
                 'preferredquality': self.audio_bitrate,
             }]
-        options["outtmpl"] = f"{CACHE if path is None else path}/{self.self.start_of_title + self.format_title(self.video_info['title'])}{f'.audio{self.id}' if path is None else ''}.%(ext)s"
+        options["outtmpl"] = f"{CACHE if path is None else path}/{self.start_of_title + self.format_title(self.video_info['title'])}{f'.audio{self.id}' if path is None else ''}.%(ext)s"
         with YoutubeDL(options) as ydl:
             ydl._ies = {"Youtube": ydl.get_info_extractor('Youtube')}
             ydl.download([self.url])
