@@ -47,9 +47,12 @@ class VideoDownloader:
                  codec=CODEC,
                  preset=PRESET,
                  basic_options=BASIC_OPTIONS,
-                 threads=THREADS):
+                 threads=THREADS,
+                 start_of_title=""
+                ):
         self.id = random.randint(0, 1000000)
         self.path = path
+        self.start_of_title = start_of_title
         self.mode = mode
         self.started_merging = False
 
@@ -83,9 +86,9 @@ class VideoDownloader:
             self.run()
 
     def run(self):
-        logging.info(f"     -> Downloading video \"{self.video_info['title']}\" ({self.url})...")
+        logging.info(f"     -> Downloading video \"{self.start_of_title + self.video_info['title']}\" ({self.url})...")
         if self.skip_existing_videos:
-            if os.path.exists(os.path.join(self.path, re.sub(r"[\\/:*?\"<>|]", "", self.video_info['title']) + '.mp4')):
+            if os.path.exists(os.path.join(self.path, re.sub(r"[\\/:*?\"<>|]", "", self.start_of_title + self.video_info['title']) + '.mp4')):
                 logging.info("          -> Video already exists! Skipping...")
                 return
         if self.mode == "both":
@@ -103,13 +106,13 @@ class VideoDownloader:
         self.merge()
 
     def exit(self):
-        logging.info(f"     -> Exiting video \"{self.video_info['title']}\" ({self.url})...")
+        logging.info(f"     -> Exiting video \"{self.start_of_title + self.video_info['title']}\" ({self.url})...")
         if self._video_file is not None:
             self._video_file.close()
             self._video_file = None
         if self.started_merging and REMOVE_UNFINISHED_DOWNLOADS:
-            logging.info(f"          -> Video \"{self.video_info['title']}\" unfinished! Removing...")
-            os.remove(os.path.join(self.path, re.sub(r"[\\/:*?\"<>|]", "", self.video_info['title']) + '.mp4'))
+            logging.info(f"          -> Video \"{self.start_of_title + self.video_info['title']}\" unfinished! Removing...")
+            os.remove(os.path.join(self.path, re.sub(r"[\\/:*?\"<>|]", "", self.start_of_title + self.video_info['title']) + '.mp4'))
         logging.info("          -> Video exit complete!")
 
     def download(self):
@@ -126,7 +129,7 @@ class VideoDownloader:
                 'key': 'FFmpegVideoConvertor',
                 'preferedformat': self.video_format,
             }]
-        options["outtmpl"] = f"{self.cache if path is None else path}/{self.format_title(self.video_info['title'])}{f'.video{self.id}' if path is None else '' }.%(ext)s"
+        options["outtmpl"] = f"{self.cache if path is None else path}/{self.start_of_title + self.format_title(self.video_info['title'])}{f'.video{self.id}' if path is None else '' }.%(ext)s"
         with YoutubeDL(options) as ydl:
             ydl._ies = {"Youtube": ydl.get_info_extractor('Youtube')}
             ydl.download([self.url])
@@ -160,7 +163,7 @@ class VideoDownloader:
         logging.info("          -> Merging video and audio...")
         self._video_file = VideoFileClip(os.path.join(self.cache, self.get_file(f".video{self.id}.")))
         self._video_file.audio = AudioFileClip(os.path.join(self.cache, self.get_file(f".audio{self.id}.")))
-        path = os.path.join(self.path, re.sub(r"[\\/:*?\"<>|]", "", self.video_info['title']) + "." + self.result_format)
+        path = os.path.join(self.path, re.sub(r"[\\/:*?\"<>|]", "", self.start_of_title + self.video_info['title']) + "." + self.result_format)
         self.started_merging = True
         self._video_file.write_videofile(path, codec=self.codec, logger=None, preset=self.preset, threads=self.threads)
         logging.info("              ✓ Merge complete!")
@@ -173,7 +176,13 @@ class VideoDownloader:
 
 
 class PlaylistDownloader:
-    def __init__(self, url, auto_run=True, playlist_info=None):
+    def __init__(
+            self, 
+            url, 
+            auto_run=True, 
+            playlist_info=None, 
+            number_the_videos_in_playlist=NUMBER_THE_VIDEOS_IN_PLAYLIST
+        ):
         self.url = url
         if playlist_info is None:
             with YoutubeDL(BASIC_OPTIONS) as ydl:
@@ -181,6 +190,7 @@ class PlaylistDownloader:
         else:
             self.playlist_info = playlist_info
 
+        self.number_the_videos_in_playlist = number_the_videos_in_playlist
         self.videos = self.get_videos()
         self.current_video = None
 
@@ -199,11 +209,11 @@ class PlaylistDownloader:
             path = os.path.join(PATH, re.sub(r"[\\/:*?\"<>|]", "", self.playlist_info['title']))
         else:
             path = PATH
-        for video in self.playlist_info['entries']:
+        for index, video in enumerate(self.playlist_info['entries']):
             if video is None:
                 logging.warning(" -> Video is None! Skipping...")
                 continue
-            videos.append(VideoDownloader(video['webpage_url'], auto_run=False, video_info=video, path=path))
+            videos.append(VideoDownloader(video['webpage_url'], auto_run=False, video_info=video, path=path, start_of_title=f"{index + 1} - " if self.number_the_videos_in_playlist else ""))
 
         return videos
 
